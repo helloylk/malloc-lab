@@ -140,43 +140,33 @@ int mm_init(range_t **ranges)
  */
 void* mm_malloc(size_t size)
 {
-  int newsize = ALIGN(size + SIZE_T_SIZE);
-  void *p = mem_sbrk(newsize);
-  if (p == (void *)-1)
-    return NULL;
-  else {
-    *(size_t *)p = size;
-    return (void *)((char *)p + SIZE_T_SIZE);
-  }
-  
-  size_t asize;      /* adjusted block size */
-  size_t extendsize; /* amount to extend heap if no fit */
-  char *ptr;
+  size_t asize; /* Adjusted block size */
+  size_t extendsize; /* Amount to extend heap if no fit */
+  char *bp;
 
   /* Ignore spurious requests */
-  if (size <= 0)
-      return NULL;
+  if (size == 0)
+  return NULL;
 
   /* Adjust block size to include overhead and alignment reqs. */
-  if (size <= DSIZE) {
-    asize = 2* DSIZE;
-  } else 
-    asize =ALIGN(size*DSIZE);
-    // different
+  if (size <= DSIZE)
+   asize = 2*DSIZE;
+  else
+   asize = DSIZE * ((size + (DSIZE) + (DSIZE-1)) / DSIZE);
   
-  if((ptr =find_fit(asize))) //different
-  {
-    place(ptr, asize);
-    return ptr;
-  }
+  /* Search the free list for a fit */
+  if ((bp = find_fit(asize)) != NULL) {
+   place(bp, asize);
+   return bp;
+   }
 
-  /* No Fit. */
+  /* No fit found. Get more memory and place the block */
   extendsize = MAX(asize,CHUNKSIZE);
-  if ((ptr = extend_heap(extendsize/WSIZE)) == NULL)
-      return NULL;
-  place(ptr, asize);
-
-  return ptr;
+  if ((bp = extend_heap(extendsize/WSIZE)) == NULL)
+    return NULL;
+  place(bp, asize);
+  return bp;
+ }
 }
 
 /*
@@ -218,7 +208,7 @@ void* mm_realloc(void *ptr, size_t t)
  */
 void mm_exit(void)
 {
-  
+  return 0;
 }
 
 /*----------------------------------------------------------------------*/
@@ -251,7 +241,7 @@ int mm_check(void){
 
   size_t* curr_block = start_heap;
 
-  for(ptr = start_heap; GET_SIZE(HEADER(ptr)) > 0; ptr = NEXT(ptr)) {
+  for(ptr = start_heap; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT(ptr)) {
       printf(check_block(ptr));
       if (ptr > end_heap || ptr < start_heap)
           printf("Error: pointer %p out of heap bounds\n", ptr);
@@ -336,11 +326,11 @@ static void *coalesce(void *ptr)
     }
 
     else {                                     /* Case 4: Neither are allocated */
-        size += GET_SIZE(HDRP(PREV(bp))) + 
-            GET_SIZE(FTRP(NEXT(bp)));
-        PUT(HDRP(PREV(bp)), PACK(size, 0));
-        PUT(FTRP(NEXT(bp)), PACK(size, 0));
-        return (PREV(bp));
+        size += GET_SIZE(HDRP(PREV(ptr))) + 
+            GET_SIZE(FTRP(NEXT(ptr)));
+        PUT(HDRP(PREV(ptr)), PACK(size, 0));
+        PUT(FTRP(NEXT(ptr)), PACK(size, 0));
+        return (PREV(ptr));
     }
 }
 
