@@ -166,7 +166,7 @@ void* mm_malloc(size_t size)
     return NULL;
   place(bp, asize);
   return bp;
- }
+ 
 }
 
 /*
