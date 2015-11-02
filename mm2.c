@@ -30,18 +30,34 @@
 /*
  * Team identification
  */
-team_t team = {
-	/* Team name */
-	"He (Henry) Tian",
-	/* First member's full name */
-	"He Tian",
-	/* First member's NYU NetID*/
-	"",
-	/* Second member's full name (leave blank if none) */
-	"",
-	/* Second member's email address (leave blank if none) */
-	""
+student_t student = {
+	"yeli kim",
+	"2012-13276"
 };
+
+/* DON'T MODIFY THIS VALUE AND LEAVE IT AS IT WAS */
+static range_t **gl_ranges;
+/* 
+ * remove_range - manipulate range lists
+ * DON'T MODIFY THIS FUNCTION AND LEAVE IT AS IT WAS
+ */
+static void remove_range(range_t **ranges, char *lo)
+{
+  range_t *p;
+  range_t **prevpp = ranges;
+  
+  if (!ranges)
+    return;
+
+  for (p = *ranges;  p != NULL; p = p->next) {
+    if (p->lo == lo) {
+      *prevpp = p->next;
+      free(p);
+      break;
+    }
+    prevpp = &(p->next);
+  }
+}
 
 /*
  * Constants and macros
@@ -138,7 +154,7 @@ static void delete_node(void *ptr);
  * mm_init - Initialize the malloc package. Construct prologue and epilogue
  *           blocks.
  */
-int mm_init(void)
+int mm_init(range_t **ranges)
 {
   int list;         // List counter
   char *heap_start; // Pointer to beginning of heap
@@ -166,6 +182,9 @@ int mm_init(void)
   line_count = LINE_OFFSET;
   skip = 0;
   */
+  
+  /* DON't MODIFY THIS STAGE AND LEAVE IT AS IT WAS */
+  gl_ranges = ranges;
   
   return 0;
 }
@@ -268,6 +287,9 @@ void mm_free(void *ptr)
   }
   */
   
+  /* DON't MODIFY THIS STAGE AND LEAVE IT AS IT WAS */
+  if (gl_ranges)
+    remove_range(gl_ranges, ptr);
   
   return;
 }
