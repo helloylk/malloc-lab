@@ -65,7 +65,12 @@ static range_t **gl_ranges;
 static void *extend_heap(size_t words);
 static void *coalesce(void *bp);
 static void *find_fit(size_t asize);
+int mm_check(void);
+static void *place(void *bp, size_t asize);
+//static void remove(void *ptr);
 
+/* Global variables*/
+char *heap_listp;
 
 /* 
  * remove_range - manipulate range lists
@@ -101,7 +106,7 @@ void handle_double_free(void) {
   exit(-1);
 }
 
-  char *heap_listp;
+
 
 /*
  * mm_init - initialize the malloc package.
@@ -155,23 +160,21 @@ void* mm_malloc(size_t size)
   /* Adjust block size to include overhead and alignment reqs. */
   if (size <= DSIZE) {
     asize = 2* DSIZE;
-  } else {
+  } else 
     asize =ALIGN(size*DSIZE);
-  }
-    
-  if((ptr =find_fit(asize)))
+    // different
+  
+  if((ptr =find_fit(asize))) //different
   {
     place(ptr, asize);
     return ptr;
   }
 
-
+  /* No Fit. */
   extendsize = MAX(asize,CHUNKSIZE);
-
   if ((ptr = extend_heap(extendsize/WSIZE)) == NULL)
       return NULL;
-
-  ptr = place(ptr, asize);
+  place(ptr, asize);
 
   return ptr;
 }
@@ -186,6 +189,7 @@ void mm_free(void *ptr)
   if (!ptr) return;
   size_t size = GET_SIZE(HDRP(ptr));
 
+ //call double_handle_free when try to free the freed block
   if ((GET_ALLOC(HDRP(ptr)))==0)
     handle_double_free();
  
@@ -217,81 +221,7 @@ void mm_exit(void)
   
 }
 
-/*
- * extend_heap - extends the heap with a new free block.
- */
-static void *extend_heap(size_t words) 
-{
-    char *bp;
-    size_t size;
-    
-    /* Allocate an even number of words to maintain alignment */
-    size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
-    if ((int)(bp = mem_sbrk(size)) == -1) 
-        return NULL;
-
-    /* Initialize free block header/footer and the epilogue header */
-    PUT(HDRP(bp), PACK(size, 0));         /* free block header */
-    PUT(FTRP(bp), PACK(size, 0));         /* free block footer */
-    PUT(HDRP(NEXT(bp)), PACK(0, 1)); /* new epilogue header */
-
-    /* Coalesce if the previous block was free */
-    return coalesce(bp);
-}
-
-
-/*
- * coalesce - boundary tag coalescing. Return ptr to coalesced block
- */
-static void *coalesce(void *bp) 
-{
-    size_t prev_alloc = GET_ALLOC(FTRP(PREV(bp)));
-    size_t next_alloc = GET_ALLOC(HDRP(NEXT(bp)));
-    size_t size = GET_SIZE(HDRP(bp));
-
-    if (prev_alloc && next_alloc) {            /* Case 1: Neighbors both allocated */
-        return bp;
-    }
-
-    else if (prev_alloc && !next_alloc) {      /* Case 2: Only the previous is allocated*/
-        size += GET_SIZE(HDRP(NEXT(bp)));
-
-        /* If only the previous block is allocated, remove the next block */
-        tree_root = mm_remove(tree_root, NEXT(bp));
-
-        PUT(HDRP(bp), PACK(size, 0));
-        PUT(FTRP(bp), PACK(size,0));
-
-        return(bp);
-    }
-
-    else if (!prev_alloc && next_alloc) {      /* Case 3: Only the next is allocated */
-        size += GET_SIZE(HDRP(PREV(bp)));
-
-        /* If only the next block is allocated, remove the previous block */
-        tree_root = mm_remove(tree_root, PREV(bp));
-
-        PUT(FTRP(bp), PACK(size, 0));
-        PUT(HDRP(PREV(bp)), PACK(size, 0));
-
-        return(PREV(bp));
-    }
-
-    else {                                     /* Case 4: Neither are allocated */
-        size += GET_SIZE(HDRP(PREV(bp))) + 
-            GET_SIZE(FTRP(NEXT(bp)));
-
-        /* If neither blocks are allocated, remove them both */
-        tree_root = mm_remove(tree_root, NEXT_BLKP(bp));
-        tree_root = mm_remove(tree_root, PREV_BLKP(bp));
-
-        PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
-        PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
-
-        return(PREV_BLKP(bp));
-    }
-}
-
+/*----------------------------------------------------------------------*/
 /*
  * mm_check
  * Check the heap for consistency
@@ -302,7 +232,7 @@ int check_block(void *ptr){
       printf("ERROR, %p is not aligned correctly\n", ptr);
       return 1;
   }
-  if (GET(HEADER(ptr)) != GET(FOOTER(ptr))){
+  if (GET(HDRP(ptr)) != GET(FTRP(ptr))){
       printf("ERROR, %p has inconsistent header/footer\n", ptr);
       return 2;
   }
@@ -337,22 +267,84 @@ int mm_check(void){
  * place - Place block of asize bytes at start of free block bp 
  *         and split if remainder would be at least minimum block size
  */
-/* $begin mmplace */
-/* $begin mmplace-proto */
 static void *place(void *bp, size_t asize)
-/* $end mmplace-proto */
 {
   size_t csize = GET_SIZE(HDRP(bp));
    
   if((csize -asize) >= 24) {
     PUT(HDRP(bp), PACK(asize,1));
     PUT(FTRP(bp), PACK(asize,1));
-    remove(bp);
+    bp = NEXT(bp);
     PUT(HDRP(bp), PACK(csize-asize,0));
     PUT(FTRP(bp), PACK(csize-asize,0));
-    coalesce(bp);
+  }
+  else{
+      PUT(HDRP(bp), PACK(csize, 1));
+      PUT(FTRP(bp), PACK(csize, 1));
+  }
 }
 
+
+/*
+ * extend_heap - extends the heap with a new free block.
+ */
+static void *extend_heap(size_t words) 
+{
+    char *bp;
+    size_t size;
+    
+    /* Allocate an even number of words to maintain alignment */
+    size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
+    if ((int)(bp = mem_sbrk(size)) == -1) 
+        return NULL;
+
+    /* Initialize free block header/footer and the epilogue header */
+    PUT(HDRP(bp), PACK(size, 0));         /* free block header */
+    PUT(FTRP(bp), PACK(size, 0));         /* free block footer */
+    PUT(HDRP(NEXT(bp)), PACK(0, 1)); /* new epilogue header */
+
+    /* Coalesce if the previous block was free */
+    return coalesce(bp);
+}
+
+
+/*
+ * coalesce - boundary tag coalescing. Return ptr to coalesced block
+ */
+static void *coalesce(void *ptr) 
+{
+    size_t prev_alloc = GET_ALLOC(FTRP(PREV(ptr)));
+    size_t next_alloc = GET_ALLOC(HDRP(NEXT(ptr)));
+    size_t size = GET_SIZE(HDRP(ptr));
+
+    if (prev_alloc && next_alloc) {            /* Case 1: Neighbors both allocated */
+        return ptr;
+    }
+
+    else if (prev_alloc && !next_alloc) {      /* Case 2: Only the previous is allocated*/
+        size += GET_SIZE(HDRP(NEXT(ptr)));
+        PUT(HDRP(ptr), PACK(size,0));
+        PUT(FTRP(ptr), PACK(size,0));
+        return ptr;
+    }
+
+    else if (!prev_alloc && next_alloc) {      /* Case 3: Only the next is allocated */
+        size += GET_SIZE(HDRP(PREV(ptr)));
+        PUT(FTRP(ptr), PACK(size, 0));
+        PUT(HDRP(PREV(ptr)), PACK(size, 0));
+        return (PREV(ptr));
+    }
+
+    else {                                     /* Case 4: Neither are allocated */
+        size += GET_SIZE(HDRP(PREV(bp))) + 
+            GET_SIZE(FTRP(NEXT(bp)));
+        PUT(HDRP(PREV(bp)), PACK(size, 0));
+        PUT(FTRP(NEXT(bp)), PACK(size, 0));
+        return (PREV(bp));
+    }
+}
+
+/*
 #define PREV_FP(bp)	(*(void **)(bp))
 #define NEXT_FP(bp)	(*(void **)(bp+DSIZE))
 
@@ -361,6 +353,7 @@ static void remove(void *ptr)
   if(PREV_FP(bp)) NEXT_FP(PREV_FP(ptr)) =NEXT_FP(ptr);
   PREV_FP(NEXT_FP(ptr)) = PREV_FP(ptr);
 }
+*/
 
 /* 
  * find_fit - Find a fit for a block with asize bytes 
