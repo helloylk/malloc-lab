@@ -288,22 +288,22 @@ static void *coalesce(void *ptr)
         delete_node(ptr);
         delete_node(NEXT_BLKP(ptr));
         size += GET_SIZE(HDRP(NEXT_BLKP(ptr)));
-        PUT(HDRP(ptr), PACK(size, 0));
-        PUT(FTRP(ptr), PACK(size, 0));
+        PUT_NOTAG(HDRP(ptr), PACK(size, 0));
+        PUT_NOTAG(FTRP(ptr), PACK(size, 0));
     } else if (!prev_alloc && next_alloc) {                 // Case 3 
         delete_node(ptr);
         delete_node(PREV_BLKP(ptr));
         size += GET_SIZE(HDRP(PREV_BLKP(ptr)));
-        PUT(FTRP(ptr), PACK(size, 0));
-        PUT(HDRP(PREV_BLKP(ptr)), PACK(size, 0));
+        PUT_NOTAG(FTRP(ptr), PACK(size, 0));
+        PUT_NOTAG(HDRP(PREV_BLKP(ptr)), PACK(size, 0));
         ptr = PREV_BLKP(ptr);
     } else {                                                // Case 4
         delete_node(ptr);
         delete_node(PREV_BLKP(ptr));
         delete_node(NEXT_BLKP(ptr));
         size += GET_SIZE(HDRP(PREV_BLKP(ptr))) + GET_SIZE(HDRP(NEXT_BLKP(ptr)));
-        PUT(HDRP(PREV_BLKP(ptr)), PACK(size, 0));
-        PUT(FTRP(NEXT_BLKP(ptr)), PACK(size, 0));
+        PUT_NOTAG(HDRP(PREV_BLKP(ptr)), PACK(size, 0));
+        PUT_NOTAG(FTRP(NEXT_BLKP(ptr)), PACK(size, 0));
         ptr = PREV_BLKP(ptr);
     }
     
@@ -322,14 +322,14 @@ static void *place(void *ptr, size_t asize)
     
     if (remainder <= DSIZE * 2) {
         // Do not split block 
-        PUT(HDRP(ptr), PACK(ptr_size, 1)); 
-        PUT(FTRP(ptr), PACK(ptr_size, 1)); 
+        PUT_NOTAG(HDRP(ptr), PACK(ptr_size, 1)); 
+        PUT_NOTAG(FTRP(ptr), PACK(ptr_size, 1)); 
     }
     
     else if (asize >= 100) {
         // Split block
-        PUT(HDRP(ptr), PACK(remainder, 0));
-        PUT(FTRP(ptr), PACK(remainder, 0));
+        PUT_NOTAG(HDRP(ptr), PACK(remainder, 0));
+        PUT_NOTAG(FTRP(ptr), PACK(remainder, 0));
         PUT_NOTAG(HDRP(NEXT_BLKP(ptr)), PACK(asize, 1));
         PUT_NOTAG(FTRP(NEXT_BLKP(ptr)), PACK(asize, 1));
         insert_node(ptr, remainder);
@@ -339,8 +339,8 @@ static void *place(void *ptr, size_t asize)
     
     else {
         // Split block
-        PUT(HDRP(ptr), PACK(asize, 1)); 
-        PUT(FTRP(ptr), PACK(asize, 1)); 
+        PUT_NOTAG(HDRP(ptr), PACK(asize, 1)); 
+        PUT_NOTAG(FTRP(ptr), PACK(asize, 1)); 
         PUT_NOTAG(HDRP(NEXT_BLKP(ptr)), PACK(remainder, 0)); 
         PUT_NOTAG(FTRP(NEXT_BLKP(ptr)), PACK(remainder, 0)); 
         insert_node(NEXT_BLKP(ptr), remainder);
@@ -468,8 +468,8 @@ void mm_free(void *ptr)
     size_t size = GET_SIZE(HDRP(ptr));
  
     REMOVE_RATAG(HDRP(NEXT_BLKP(ptr)));
-    PUT(HDRP(ptr), PACK(size, 0));
-    PUT(FTRP(ptr), PACK(size, 0));
+    PUT_NOTAG(HDRP(ptr), PACK(size, 0));
+    PUT_NOTAG(FTRP(ptr), PACK(size, 0));
     
     insert_node(ptr, size);
     coalesce(ptr);
