@@ -1,9 +1,10 @@
 /*
  * mm-naive.c 
  *
- *  Will going to use segregated free list.
- * 
- * 
+ * In this program, blocks follow the standard 4 byte identical header and footer, 
+ * which carries size and 3 bit of allocation tag.
+ * Main algorithm to malloc is by using 'segregated free list' method.
+ * Free block has pointer of the prodecessor in segregated free list and pointer to the successor.
  */
  
 #include <stdio.h>
@@ -82,6 +83,7 @@ int mm_check(void);
 /* Global variables*/
 void *segregated_free_lists[25]; 
 static range_t **gl_ranges;
+char *heap_listp;
 
 //--------------------------------------------------------------------------------
 /* 
@@ -125,7 +127,6 @@ void handle_double_free(void) {
  */
 int mm_init(range_t **ranges)
 {
-  char *heap_listp;
   int i;
   
   /* Initialize array of pointers to segregated free lists */
@@ -236,9 +237,16 @@ void* mm_realloc(void *ptr, size_t t)
 
 /*
  * mm_exit - finalize the malloc package.
+ * Free all the allocated blocks.
  */
 void mm_exit(void)
 {
+  char *ptr=heap_listp;
+  
+  while(ptr!=NULL){
+   free(ptr);
+   ptr=NEXT(ptr);
+  }
   return;
 }
 
