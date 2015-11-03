@@ -304,13 +304,13 @@ static void *place(void *ptr, size_t asize)
   
   delete_node(ptr);
    
-  if((csize -asize) >= 24) {
+  if((csize -asize) >= 16) {
     PUT(HDRP(ptr), PACK(asize,1));
     PUT(FTRP(ptr), PACK(asize,1));
     ptr = NEXT(ptr);
     PUT(HDRP(ptr), PACK(csize-asize,0));
     PUT(FTRP(ptr), PACK(csize-asize,0));
-    insert_node(ptr,csize-asize);
+    insert_node(ptr, csize-asize);
     //note: original devided into 3, i did 2 here
   }
   else{
