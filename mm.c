@@ -79,7 +79,7 @@ static void delete_node(void *ptr);
 int mm_check(void);
 
 /* Global variables*/
-void *segregated_free_lists[25] = {0,}; 
+void *segregated_free_lists[25]; 
 static range_t **gl_ranges;
 
 //--------------------------------------------------------------------------------
@@ -124,7 +124,12 @@ void handle_double_free(void) {
 int mm_init(range_t **ranges)
 {
   char *heap_listp;
-  //note: i did my initialization in global rather than here.
+  int i;
+  
+  /* Initialize array of pointers to segregated free lists */
+  for (i = 0; i < 25; i++) {
+    segregated_free_lists[i] = NULL;
+  }
 
   /* Create the initial empty heap */
   if ((long)(heap_listp = mem_sbrk(4*WSIZE)) == -1) return -1;
@@ -133,7 +138,6 @@ int mm_init(range_t **ranges)
   PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); 	/* prologue header */
   PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1));	/* prologue footer */
   PUT(heap_listp + (3*WSIZE), PACK(0, 1)); 	    /* epliogue header */
-  heap_listp += (2*WSIZE); 			
 
   /* Extend the empty heap with a free block of CHUNKSIZE bytes */
   if(extend_heap(CHUNKSIZE) == NULL) return -1;
@@ -181,10 +185,11 @@ void* mm_malloc(size_t size)
   }
 
   /* No fit found. Get more memory by extending */
-  extendsize = MAX(asize,CHUNKSIZE);
-  if ((ptr = extend_heap(extendsize)) == NULL)
+  if(ptr ==NULL){
+    extendsize = MAX(asize,CHUNKSIZE);
+    if ((ptr = extend_heap(extendsize)) == NULL)
     return NULL;
-
+  }
   place(ptr, asize);
   return ptr;
  }
@@ -206,10 +211,11 @@ void mm_free(void *ptr)
   // set header and footer to unallocated 
   PUT(HDRP(ptr), PACK(size,0));
   PUT(FTRP(ptr), PACK(size,0));
+  //note: put_tag
   
   //coalesce the adjacent freed block
-  coalesce(ptr);
   insert_node(ptr, size);
+  coalesce(ptr);
   
   if (gl_ranges)
     remove_range(gl_ranges, ptr);
@@ -278,18 +284,18 @@ int mm_check(void){
 static void *extend_heap(size_t words) 
 {
     char *ptr;
-    size_t size;
+    size_t asize;
     
-    size = ALIGN(size);
+    size = ALIGN(asize);
     
-    if ((int)(ptr = mem_sbrk(size)) == -1) 
+    if ((long)(ptr = mem_sbrk(asize)) == -1) 
         return NULL;
 
     /* Initialize free block header/footer and the epilogue header */
-    PUT(HDRP(ptr), PACK(size, 0));         /* free block header */
-    PUT(FTRP(ptr), PACK(size, 0));         /* free block footer */
+    PUT(HDRP(ptr), PACK(asize, 0));         /* free block header */
+    PUT(FTRP(ptr), PACK(asize, 0));         /* free block footer */
     PUT(HDRP(NEXT(ptr)), PACK(0, 1));      /* new epilogue header */
-    insert_node(ptr,size);
+    insert_node(ptr,asize);
 
     return coalesce(ptr);
 }
@@ -346,9 +352,9 @@ static void *coalesce(void *ptr)
     }
 
     else if (prev_alloc && !next_alloc) {      /* Case 2: Only the previous is allocated*/
-        size += GET_SIZE(HDRP(NEXT(ptr)));
         delete_node(ptr);
         delete_node(NEXT(ptr));
+        size += GET_SIZE(HDRP(NEXT(ptr)));
         PUT(HDRP(ptr), PACK(size,0));
         PUT(FTRP(ptr), PACK(size,0));
         insert_node(ptr, size);
@@ -356,23 +362,23 @@ static void *coalesce(void *ptr)
     }
 
     else if (!prev_alloc && next_alloc) {      /* Case 3: Only the next is allocated */
-        size += GET_SIZE(HDRP(PREV(ptr)));
         delete_node(ptr);
         delete_node(PREV(ptr));
+        size += GET_SIZE(HDRP(PREV(ptr)));
         PUT(FTRP(ptr), PACK(size, 0));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
-        insert_node(ptr, size);
+        insert_node(PREV(ptr), size);
         return (PREV(ptr));
     }
 
     else {                                     /* Case 4: Neither are allocated */
-        size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(FTRP(NEXT(ptr)));
         delete_node(ptr);
         delete_node(PREV(ptr));
         delete_node(NEXT(ptr));
+        size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(FTRP(NEXT(ptr)));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
         PUT(FTRP(NEXT(ptr)), PACK(size, 0));
-        insert_node(ptr, size);
+        insert_node(PREV(ptr), size);
         return (PREV(ptr));
     }
 }
