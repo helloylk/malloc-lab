@@ -38,6 +38,7 @@ student_t student = {
 
 #define GET(p)       (*(unsigned int *)(p)) //read word at address p
 #define PUT(p, val)  (*(unsigned int *)(p) = (val)) //write word at address p
+#define PUT_TAG(p,val)  (*(unsigned int *)(p) = (val) | GET_TAG(p)) //write word with tag
 #define PUT_PTR(p, ptr) (*(unsigned int *)(p) = (unsigned int)(ptr)) // write predecessor or successor pointer  
 
 #define GET_SIZE(p)  (GET(p) & ~0x7) //extracts size from 4 byte header/footer
