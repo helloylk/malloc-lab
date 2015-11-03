@@ -321,42 +321,49 @@ static void *place(void *ptr, size_t asize)
 
 
 
-static void *coalesce(void *ptr)
+/*
+ * coalesce - boundary tag coalescing. Return ptr to coalesced block
+ */
+static void *coalesce(void *ptr) 
 {
-    size_t prev_alloc = GET_ALLOC(HDRP(PREV(ptr)));
+    size_t prev_alloc = GET_ALLOC(FTRP(PREV(ptr)));
     size_t next_alloc = GET_ALLOC(HDRP(NEXT(ptr)));
     size_t size = GET_SIZE(HDRP(ptr));
-    
 
-    if (prev_alloc && next_alloc) {                         // Case 1
+    if (prev_alloc && next_alloc) {            /* Case 1: Neighbors both allocated */
         return ptr;
     }
-    else if (prev_alloc && !next_alloc) {                   // Case 2
+
+    else if (prev_alloc && !next_alloc) {      /* Case 2: Only the previous is allocated*/
         delete_node(ptr);
         delete_node(NEXT(ptr));
         size += GET_SIZE(HDRP(NEXT(ptr)));
-        PUT(HDRP(ptr), PACK(size, 0));
-        PUT(FTRP(ptr), PACK(size, 0));
-    } else if (!prev_alloc && next_alloc) {                 // Case 3 
+        PUT(HDRP(ptr), PACK(size,0));
+        PUT(FTRP(ptr), PACK(size,0));
+        insert_node(ptr, size);
+        return ptr;
+    }
+
+    else if (!prev_alloc && next_alloc) {      /* Case 3: Only the next is allocated */
         delete_node(ptr);
         delete_node(PREV(ptr));
         size += GET_SIZE(HDRP(PREV(ptr)));
         PUT(FTRP(ptr), PACK(size, 0));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
-        ptr = PREV(ptr);
-    } else {                                                // Case 4
+        insert_node(PREV(ptr), size);
+        return (PREV(ptr));
+    }
+
+    else {                                     /* Case 4: Neither are allocated */
         delete_node(ptr);
         delete_node(PREV(ptr));
         delete_node(NEXT(ptr));
-        size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(HDRP(NEXT(ptr)));
+        size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(FTRP(NEXT(ptr)));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
         PUT(FTRP(NEXT(ptr)), PACK(size, 0));
-        ptr = PREV(ptr);
+        insert_node(PREV(ptr), size);
+        return (PREV(ptr));
     }
-    
-    insert_node(ptr, size);
-    
-    return ptr;
 }
 
 
