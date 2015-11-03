@@ -197,22 +197,6 @@ void* mm_malloc(size_t size)
   place(ptr, asize);
   return ptr;
  }
-    
-    // if free block is not found, extend the heap
-    if (ptr == NULL) {
-        extendsize = MAX(asize, CHUNKSIZE);
-        
-        if ((ptr = extend_heap(extendsize)) == NULL)
-            return NULL;
-    }
-    
-    // Place and divide block
-    ptr = place(ptr, asize);
-    
-    
-    // Return pointer to newly allocated block 
-    return ptr;
-}
 
 /*
  * mm_free - Freeing a block 
