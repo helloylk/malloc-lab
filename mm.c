@@ -83,7 +83,6 @@ int mm_check(void);
 /* Global variables*/
 void *segregated_free_lists[25]; 
 static range_t **gl_ranges;
-char *heap_listp;
 
 //--------------------------------------------------------------------------------
 /* 
@@ -128,6 +127,7 @@ void handle_double_free(void) {
 int mm_init(range_t **ranges)
 {
   int i;
+  char *heap_listp;
   
   /* Initialize array of pointers to segregated free lists */
   for (i = 0; i < 25; i++) {
@@ -158,7 +158,7 @@ void* mm_malloc(size_t size)
 {
   size_t asize;       /* Adjusted block size */
   size_t extendsize;  /* Extend heap with this size if no fit free block */
-  char *ptr;
+  void *ptr=NULL;
 
   /* Ignore spurious requests */
   if (size == 0)
@@ -171,7 +171,7 @@ void* mm_malloc(size_t size)
     asize = ALIGN(size + DSIZE);
   
   /* Search throught the segregated_free_list for the free block*/
-  int i;
+  int i =0;
   size_t ssize=asize;
   while (i < 25) {
       if ((i == 24) || ((ssize <= 1) && (segregated_free_lists[i] != NULL))) {
@@ -241,52 +241,17 @@ void* mm_realloc(void *ptr, size_t t)
  */
 void mm_exit(void)
 {
+ /*
   char *ptr=heap_listp;
   
   while(ptr!=NULL){
    free(ptr);
    ptr=NEXT(ptr);
   }
+  */
   return;
 }
 
-/*
- * mm_check
- * Check the heap for consistency
- * 
- */
-int check_block(void *ptr){
-  if ((size_t)ptr%8){
-      printf("ERROR, %p is not aligned correctly\n", ptr);
-      return 1;
-  }
-  if (GET(HDRP(ptr)) != GET(FTRP(ptr))){
-      printf("ERROR, %p has inconsistent header/footer\n", ptr);
-      return 2;
-  }
-  return 0;
-}
-
-int mm_check(void){
-
-  char *ptr;
-  
-  size_t* start_heap =  mem_heap_lo();
-  size_t* end_heap =  mem_heap_hi();
-
-  size_t* curr_block = start_heap;
-
-  for(ptr = start_heap; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT(ptr)) {
-      printf(check_block(ptr));
-      if (ptr > end_heap || ptr < start_heap)
-          printf("Error: pointer %p out of heap bounds\n", ptr);
-      if (GET_ALLOC(ptr) == 0 && GET_ALLOC(NEXT(ptr))==0)
-          printf("ERROR: contiguous free blocks %p and %p not coalesced\n", ptr, NEXT(ptr));
-        
-  }
-
-  return 0;
-}
 
 
 //------------------------------------------------------------------------------------------------
@@ -401,7 +366,7 @@ static void insert_node(void *ptr, size_t size) {
     void *search_ptr = ptr;
     void *insert_ptr = NULL;
     
-    // Select segregated list 
+    /* Select segregated list */ 
     while ((i < 24) && (size > 1)) {
         size >>= 1;
         i++;
