@@ -427,10 +427,10 @@ static void delete_node(void *ptr) {
     
     if (PRED_LIST(ptr) != NULL) {
         if (SUCC_LIST(ptr) != NULL) {
-            PUT_PTR(SUCC_ENT(PRED(ptr)), SUCC_LIST(ptr));
-            PUT_PTR(PRED_ENT(SUCC(ptr)), PRED_LIST(ptr));
+            PUT_PTR(SUCC_ENT(PRED_LIST(ptr)), SUCC_LIST(ptr));
+            PUT_PTR(PRED_ENT(SUCC_LIST(ptr)), PRED_LIST(ptr));
         } else {
-            PUT_PTR(SUCC_ENT(PRED(ptr)), NULL);
+            PUT_PTR(SUCC_ENT(PRED_LIST(ptr)), NULL);
             segregated_free_lists[i] = PRED_LIST(ptr);
         }
     } else {
