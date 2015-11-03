@@ -127,7 +127,7 @@ int mm_init(range_t **ranges)
   //note: i did my initialization in global rather than here.
 
   /* Create the initial empty heap */
-  if ((heap_listp = mem_sbrk(4*WSIZE)) == -1) return -1;
+  if ((long)(heap_listp = mem_sbrk(4*WSIZE)) == -1) return -1;
 
   PUT(heap_listp, 0); 			                   	/* alignment padding */
   PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); 	/* prologue header */
@@ -229,7 +229,7 @@ void* mm_realloc(void *ptr, size_t t)
  */
 void mm_exit(void)
 {
-  return 0;
+  return;
 }
 
 /*
@@ -252,10 +252,7 @@ int check_block(void *ptr){
 int mm_check(void){
 
   char *ptr;
-  int cont = 1;
-  int size;
-  int found = 0;
-
+  
   size_t* start_heap =  mem_heap_lo();
   size_t* end_heap =  mem_heap_hi();
 
@@ -361,8 +358,8 @@ static void *coalesce(void *ptr)
     else {                                     /* Case 4: Neither are allocated */
         size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(FTRP(NEXT(ptr)));
         delete_node(ptr);
-        delete_node(PREV_BLKP(ptr));
-        delete_node(NEXT_BLKP(ptr));
+        delete_node(PREV(ptr));
+        delete_node(NEXT(ptr));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
         PUT(FTRP(NEXT(ptr)), PACK(size, 0));
         insert_node(ptr, size);
@@ -425,7 +422,7 @@ static void delete_node(void *ptr) {
     // Select segregated list 
     while ((i < 24 ) && (size > 1)) {
         size >>= 1;
-        list++;
+        i++;
     }
     
     if (PRED_LIST(ptr) != NULL) {
