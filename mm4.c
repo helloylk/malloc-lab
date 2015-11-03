@@ -1,5 +1,5 @@
 /*
- * mm-naive.c 
+ * mm.c 
  *
  * In this program, blocks follow the standard 4 byte identical header and footer, 
  * which carries size and 3 bit of allocation tag.
