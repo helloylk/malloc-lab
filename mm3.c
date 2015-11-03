@@ -157,7 +157,7 @@ void* mm_malloc(size_t size)
 {
   size_t asize;       /* Adjusted block size */
   size_t extendsize;  /* Extend heap with this size if no fit free block */
-  char *ptr= NULL;
+  void *ptr= NULL;
 
   /* Ignore spurious requests */
   if (size == 0)
@@ -250,7 +250,7 @@ void mm_exit(void)
  */
 static void *extend_heap(size_t words) 
 {
-    char *ptr;
+    void *ptr;
     size_t asize;
     
     asize = ALIGN(asize);
