@@ -57,7 +57,7 @@ student_t student = {
 
 // get ptr's predecessor and successor on the segregated list 
 #define PRED_LIST(ptr) (*(char **)(ptr))
-#define SUCC_LIST(ptr) (*(char **)(SUCC_PTR(ptr)))
+#define SUCC_LIST(ptr) (*(char **)(SUCC_ENT(ptr)))
 
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 8
