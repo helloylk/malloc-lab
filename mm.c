@@ -306,11 +306,11 @@ static void *place(void *ptr, size_t asize)
    
   if(asize >= 100) {
     // Split block
-    PUT(HDRP(ptr), PACK(remainder, 0));
-    PUT(FTRP(ptr), PACK(remainder, 0));
+    PUT(HDRP(ptr), PACK(csize-asize, 0));
+    PUT(FTRP(ptr), PACK(csize-asize, 0));
     PUT(HDRP(NEXT(ptr)), PACK(asize, 1));
     PUT(FTRP(NEXT(ptr)), PACK(asize, 1));
-    insert_node(ptr, remainder);
+    insert_node(ptr, csize-asize);
     return NEXT(ptr);
   }
   
