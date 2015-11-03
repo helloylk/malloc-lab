@@ -78,7 +78,6 @@ static void *coalesce(void *ptr);
 static void *place(void *ptr, size_t asize);
 static void insert_node(void *ptr, size_t size);
 static void delete_node(void *ptr);
-int mm_check(void);
 
 /* Global variables*/
 void *segregated_free_lists[25]; 
