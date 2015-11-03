@@ -286,7 +286,7 @@ static void *extend_heap(size_t words)
     char *ptr;
     size_t asize;
     
-    size = ALIGN(asize);
+    asize = ALIGN(asize);
     
     if ((long)(ptr = mem_sbrk(asize)) == -1) 
         return NULL;
