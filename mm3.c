@@ -339,7 +339,7 @@ static void *coalesce(void *ptr)
         PUT(FTRP(ptr), PACK(size, 0));
     } else if (!prev_alloc && next_alloc) {                 // Case 3 
         delete_node(ptr);
-        delete_node(PREV_BLKP(ptr));
+        delete_node(PREV(ptr));
         size += GET_SIZE(HDRP(PREV(ptr)));
         PUT(FTRP(ptr), PACK(size, 0));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
