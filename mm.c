@@ -210,9 +210,8 @@ void mm_free(void *ptr)
     handle_double_free();
  
   // set header and footer to unallocated 
-  PUT(HDRP(ptr), PACK(size,0));
-  PUT(FTRP(ptr), PACK(size,0));
-  //note: put_tag
+  PUT_TAG(HDRP(ptr), PACK(size,0));
+  PUT_TAG(FTRP(ptr), PACK(size,0));
   
   //coalesce the adjacent freed block
   insert_node(ptr, size);
@@ -313,8 +312,8 @@ static void *place(void *ptr, size_t asize)
    
   if(asize >= 100) {
     // Split block
-    PUT(HDRP(ptr), PACK(csize-asize, 0));
-    PUT(FTRP(ptr), PACK(csize-asize, 0));
+    PUT_TAG(HDRP(ptr), PACK(csize-asize, 0));
+    PUT_TAG(FTRP(ptr), PACK(csize-asize, 0));
     PUT(HDRP(NEXT(ptr)), PACK(asize, 1));
     PUT(FTRP(NEXT(ptr)), PACK(asize, 1));
     insert_node(ptr, csize-asize);
@@ -322,8 +321,8 @@ static void *place(void *ptr, size_t asize)
   }
   
   else if((csize-asize) >= 2 * DSIZE) {
-    PUT(HDRP(ptr), PACK(asize,1));
-    PUT(FTRP(ptr), PACK(asize,1));
+    PUT_TAG(HDRP(ptr), PACK(asize,1));
+    PUT_TAG(FTRP(ptr), PACK(asize,1));
     ptr = NEXT(ptr);
     PUT(HDRP(ptr), PACK(csize-asize,0));
     PUT(FTRP(ptr), PACK(csize-asize,0));
@@ -331,8 +330,8 @@ static void *place(void *ptr, size_t asize)
   }
   
   else{
-      PUT(HDRP(ptr), PACK(csize, 1));
-      PUT(FTRP(ptr), PACK(csize, 1));
+      PUT_TAG(HDRP(ptr), PACK(csize, 1));
+      PUT_TAG(FTRP(ptr), PACK(csize, 1));
   }
   
   return ptr;
@@ -356,8 +355,8 @@ static void *coalesce(void *ptr)
         delete_node(ptr);
         delete_node(NEXT(ptr));
         size += GET_SIZE(HDRP(NEXT(ptr)));
-        PUT(HDRP(ptr), PACK(size,0));
-        PUT(FTRP(ptr), PACK(size,0));
+        PUT_TAG(HDRP(ptr), PACK(size,0));
+        PUT_TAG(FTRP(ptr), PACK(size,0));
         insert_node(ptr, size);
         return ptr;
     }
@@ -366,8 +365,8 @@ static void *coalesce(void *ptr)
         delete_node(ptr);
         delete_node(PREV(ptr));
         size += GET_SIZE(HDRP(PREV(ptr)));
-        PUT(FTRP(ptr), PACK(size, 0));
-        PUT(HDRP(PREV(ptr)), PACK(size, 0));
+        PUT_TAG(FTRP(ptr), PACK(size, 0));
+        PUT_TAG(HDRP(PREV(ptr)), PACK(size, 0));
         insert_node(PREV(ptr), size);
         return (PREV(ptr));
     }
@@ -377,8 +376,8 @@ static void *coalesce(void *ptr)
         delete_node(PREV(ptr));
         delete_node(NEXT(ptr));
         size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(FTRP(NEXT(ptr)));
-        PUT(HDRP(PREV(ptr)), PACK(size, 0));
-        PUT(FTRP(NEXT(ptr)), PACK(size, 0));
+        PUT_TAG(HDRP(PREV(ptr)), PACK(size, 0));
+        PUT_TAG(FTRP(NEXT(ptr)), PACK(size, 0));
         insert_node(PREV(ptr), size);
         return (PREV(ptr));
     }
