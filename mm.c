@@ -30,6 +30,7 @@ student_t student = {
 #define WSIZE       4       //header, footer size
 #define DSIZE       8       //total overhead size
 #define CHUNKSIZE  (1<<12)  //amnt to extend heap by
+#define INITCHUNKSIZE (1<<6)
 
 #define MAX(x, y) ((x) > (y)? (x) : (y))
 #define MIN(x, y) ((x) < (y)? (x) : (y))
@@ -38,7 +39,6 @@ student_t student = {
 
 #define GET(p)       (*(unsigned int *)(p)) //read word at address p
 #define PUT(p, val)  (*(unsigned int *)(p) = (val)) //write word at address p
-#define PUT_TAG(p,val)  (*(unsigned int *)(p) = (val) | GET_TAG(p)) //write word with tag
 #define PUT_PTR(p, ptr) (*(unsigned int *)(p) = (unsigned int)(ptr)) // write predecessor or successor pointer  
 
 #define GET_SIZE(p)  (GET(p) & ~0x7) //extracts size from 4 byte header/footer
@@ -120,7 +120,8 @@ void handle_double_free(void) {
 //------------------------------------------------------------------------------
 /*
  * mm_init - initialize the malloc package.
- * create the initial, very first empty heap
+ * create the initial, very first empty heap\
+ * Initialize the segregated free lists (list max length=25)
  */
 int mm_init(range_t **ranges)
 {
@@ -135,13 +136,13 @@ int mm_init(range_t **ranges)
   /* Create the initial empty heap */
   if ((long)(heap_listp = mem_sbrk(4*WSIZE)) == -1) return -1;
 
-  PUT(heap_listp, 0); 			                   	/* alignment padding */
+  PUT(heap_listp, 0); 			                   	 /* alignment padding */
   PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); 	/* prologue header */
   PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1));	/* prologue footer */
   PUT(heap_listp + (3*WSIZE), PACK(0, 1)); 	    /* epliogue header */
 
   /* Extend the empty heap with a free block of CHUNKSIZE bytes */
-  if(extend_heap(CHUNKSIZE) == NULL) return -1;
+  if(extend_heap(INITCHUNKSIZE) == NULL) return -1;
 
   gl_ranges = ranges;
   return 0;
@@ -156,19 +157,19 @@ void* mm_malloc(size_t size)
 {
   size_t asize;       /* Adjusted block size */
   size_t extendsize;  /* Extend heap with this size if no fit free block */
-  char *ptr;
+  char *pt r= NULL;
 
   /* Ignore spurious requests */
   if (size == 0)
     return NULL;
 
-  /* Adjust block size to include overhead and alignment reqs. */
+  /* Adjust block size to align */
   if (size <= DSIZE)
-   asize = 2*DSIZE;
+    asize = 2 * DSIZE;
   else
-   asize = ALIGN(size+DSIZE);
+    asize = ALIGN(size + DSIZE);
   
-  /* Search throught the segregated_free_list the free block*/
+  /* Search throught the segregated_free_list for the free block*/
   int i;
   size_t ssize=asize;
   while (i < 25) {
@@ -188,9 +189,11 @@ void* mm_malloc(size_t size)
   /* No fit found. Get more memory by extending */
   if(ptr ==NULL){
     extendsize = MAX(asize,CHUNKSIZE);
+    
     if ((ptr = extend_heap(extendsize)) == NULL)
-    return NULL;
+      return NULL;
   }
+  
   place(ptr, asize);
   return ptr;
  }
@@ -210,8 +213,9 @@ void mm_free(void *ptr)
     handle_double_free();
  
   // set header and footer to unallocated 
-  PUT_TAG(HDRP(ptr), PACK(size,0));
-  PUT_TAG(FTRP(ptr), PACK(size,0));
+  PUT(HDRP(ptr), PACK(size,0));
+  PUT(FTRP(ptr), PACK(size,0));
+  //note: put_tag
   
   //coalesce the adjacent freed block
   insert_node(ptr, size);
@@ -312,8 +316,8 @@ static void *place(void *ptr, size_t asize)
    
   if(asize >= 100) {
     // Split block
-    PUT_TAG(HDRP(ptr), PACK(csize-asize, 0));
-    PUT_TAG(FTRP(ptr), PACK(csize-asize, 0));
+    PUT(HDRP(ptr), PACK(csize-asize, 0));
+    PUT(FTRP(ptr), PACK(csize-asize, 0));
     PUT(HDRP(NEXT(ptr)), PACK(asize, 1));
     PUT(FTRP(NEXT(ptr)), PACK(asize, 1));
     insert_node(ptr, csize-asize);
@@ -321,8 +325,8 @@ static void *place(void *ptr, size_t asize)
   }
   
   else if((csize-asize) >= 2 * DSIZE) {
-    PUT_TAG(HDRP(ptr), PACK(asize,1));
-    PUT_TAG(FTRP(ptr), PACK(asize,1));
+    PUT(HDRP(ptr), PACK(asize,1));
+    PUT(FTRP(ptr), PACK(asize,1));
     ptr = NEXT(ptr);
     PUT(HDRP(ptr), PACK(csize-asize,0));
     PUT(FTRP(ptr), PACK(csize-asize,0));
@@ -330,8 +334,8 @@ static void *place(void *ptr, size_t asize)
   }
   
   else{
-      PUT_TAG(HDRP(ptr), PACK(csize, 1));
-      PUT_TAG(FTRP(ptr), PACK(csize, 1));
+      PUT(HDRP(ptr), PACK(csize, 1));
+      PUT(FTRP(ptr), PACK(csize, 1));
   }
   
   return ptr;
@@ -355,8 +359,8 @@ static void *coalesce(void *ptr)
         delete_node(ptr);
         delete_node(NEXT(ptr));
         size += GET_SIZE(HDRP(NEXT(ptr)));
-        PUT_TAG(HDRP(ptr), PACK(size,0));
-        PUT_TAG(FTRP(ptr), PACK(size,0));
+        PUT(HDRP(ptr), PACK(size,0));
+        PUT(FTRP(ptr), PACK(size,0));
         insert_node(ptr, size);
         return ptr;
     }
@@ -365,8 +369,8 @@ static void *coalesce(void *ptr)
         delete_node(ptr);
         delete_node(PREV(ptr));
         size += GET_SIZE(HDRP(PREV(ptr)));
-        PUT_TAG(FTRP(ptr), PACK(size, 0));
-        PUT_TAG(HDRP(PREV(ptr)), PACK(size, 0));
+        PUT(FTRP(ptr), PACK(size, 0));
+        PUT(HDRP(PREV(ptr)), PACK(size, 0));
         insert_node(PREV(ptr), size);
         return (PREV(ptr));
     }
@@ -376,8 +380,8 @@ static void *coalesce(void *ptr)
         delete_node(PREV(ptr));
         delete_node(NEXT(ptr));
         size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(FTRP(NEXT(ptr)));
-        PUT_TAG(HDRP(PREV(ptr)), PACK(size, 0));
-        PUT_TAG(FTRP(NEXT(ptr)), PACK(size, 0));
+        PUT(HDRP(PREV(ptr)), PACK(size, 0));
+        PUT(FTRP(NEXT(ptr)), PACK(size, 0));
         insert_node(PREV(ptr), size);
         return (PREV(ptr));
     }
