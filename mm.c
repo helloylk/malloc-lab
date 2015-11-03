@@ -158,7 +158,7 @@ void* mm_malloc(size_t size)
 {
   size_t asize;       /* Adjusted block size */
   size_t extendsize;  /* Extend heap with this size if no fit free block */
-  char *ptr= NULL;
+  char *ptr;
 
   /* Ignore spurious requests */
   if (size == 0)
