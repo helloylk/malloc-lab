@@ -260,21 +260,21 @@ void mm_exit(void)
 /*
  * extend_heap - extends the heap with a new free block.
  */
-static void *extend_heap(size_t words) 
+static void *extend_heap(size_t size)
 {
-    char *ptr;
-    size_t asize;
+    void *ptr;                   
+    size_t asize;                // Adjusted size 
     
-    asize = ALIGN(words);
+    asize = ALIGN(size);
     
-    if ((ptr = mem_sbrk(asize)) == (void *)-1) 
+    if ((ptr = mem_sbrk(asize)) == (void *)-1)
         return NULL;
-
-    /* Initialize free block header/footer and the epilogue header */
-    PUT(HDRP(ptr), PACK(asize, 0));         /* free block header */
-    PUT(FTRP(ptr), PACK(asize, 0));         /* free block footer */
-    PUT(HDRP(NEXT(ptr)), PACK(0, 1));      /* new epilogue header */
-    insert_node(ptr,asize);
+    
+    // Set headers and footer 
+    PUT(HDRP(ptr), PACK(asize, 0));  
+    PUT(FTRP(ptr), PACK(asize, 0));   
+    PUT(HDRP(NEXT(ptr)), PACK(0, 1)); 
+    insert_node(ptr, asize);
 
     return coalesce(ptr);
 }
@@ -321,50 +321,44 @@ static void *place(void *ptr, size_t asize)
 
 
 
-/*
- * coalesce - boundary tag coalescing. Return ptr to coalesced block
- */
-static void *coalesce(void *ptr) 
+static void *coalesce(void *ptr)
 {
-    size_t prev_alloc = GET_ALLOC(FTRP(PREV(ptr)));
+    size_t prev_alloc = GET_ALLOC(HDRP(PREV(ptr)));
     size_t next_alloc = GET_ALLOC(HDRP(NEXT(ptr)));
     size_t size = GET_SIZE(HDRP(ptr));
+    
 
-    if (prev_alloc && next_alloc) {            /* Case 1: Neighbors both allocated */
+    if (prev_alloc && next_alloc) {                         // Case 1
         return ptr;
     }
-
-    else if (prev_alloc && !next_alloc) {      /* Case 2: Only the previous is allocated*/
+    else if (prev_alloc && !next_alloc) {                   // Case 2
         delete_node(ptr);
         delete_node(NEXT(ptr));
         size += GET_SIZE(HDRP(NEXT(ptr)));
-        PUT(HDRP(ptr), PACK(size,0));
-        PUT(FTRP(ptr), PACK(size,0));
-        insert_node(ptr, size);
-        return ptr;
-    }
-
-    else if (!prev_alloc && next_alloc) {      /* Case 3: Only the next is allocated */
+        PUT(HDRP(ptr), PACK(size, 0));
+        PUT(FTRP(ptr), PACK(size, 0));
+    } else if (!prev_alloc && next_alloc) {                 // Case 3 
         delete_node(ptr);
-        delete_node(PREV(ptr));
+        delete_node(PREV_BLKP(ptr));
         size += GET_SIZE(HDRP(PREV(ptr)));
         PUT(FTRP(ptr), PACK(size, 0));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
-        insert_node(PREV(ptr), size);
-        return (PREV(ptr));
-    }
-
-    else {                                     /* Case 4: Neither are allocated */
+        ptr = PREV(ptr);
+    } else {                                                // Case 4
         delete_node(ptr);
         delete_node(PREV(ptr));
         delete_node(NEXT(ptr));
-        size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(FTRP(NEXT(ptr)));
+        size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(HDRP(NEXT(ptr)));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
         PUT(FTRP(NEXT(ptr)), PACK(size, 0));
-        insert_node(PREV(ptr), size);
-        return (PREV(ptr));
+        ptr = PREV(ptr);
     }
+    
+    insert_node(ptr, size);
+    
+    return ptr;
 }
+
 
 
 static void insert_node(void *ptr, size_t size) {
