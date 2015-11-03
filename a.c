@@ -305,7 +305,7 @@ static void *place(void *ptr, size_t asize)
     ptr = NEXT(ptr);
     PUT(HDRP(ptr), PACK(csize-asize,0));
     PUT(FTRP(ptr), PACK(csize-asize,0));
-    insert_node(ptr, csize-asize);
+    insert_node(NEXT(ptr), csize-asize);
   }
   
   else{
