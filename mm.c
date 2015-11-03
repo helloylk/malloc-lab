@@ -304,15 +304,25 @@ static void *place(void *ptr, size_t asize)
   
   delete_node(ptr);
    
-  if((csize -asize) >= 16) {
+  if(asize >= 100) {
+    // Split block
+    PUT(HDRP(ptr), PACK(remainder, 0));
+    PUT(FTRP(ptr), PACK(remainder, 0));
+    PUT(HDRP(NEXT(ptr)), PACK(asize, 1));
+    PUT(FTRP(NEXT(ptr)), PACK(asize, 1));
+    insert_node(ptr, remainder);
+    return NEXT(ptr);
+  }
+  
+  else if((csize-asize) >= 2 * DSIZE) {
     PUT(HDRP(ptr), PACK(asize,1));
     PUT(FTRP(ptr), PACK(asize,1));
     ptr = NEXT(ptr);
     PUT(HDRP(ptr), PACK(csize-asize,0));
     PUT(FTRP(ptr), PACK(csize-asize,0));
     insert_node(ptr, csize-asize);
-    //note: original devided into 3, i did 2 here
   }
+  
   else{
       PUT(HDRP(ptr), PACK(csize, 1));
       PUT(FTRP(ptr), PACK(csize, 1));
