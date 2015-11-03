@@ -1,9 +1,10 @@
 /*
  * mm-naive.c 
  *
- *  Will going to use segregated free list.
- * 
- * 
+ * In this program, blocks follow the standard 4 byte identical header and footer, 
+ * which carries size and 3 bit of allocation tag.
+ * Main algorithm to malloc is by using 'segregated free list' method.
+ * Free block has pointer of the prodecessor in segregated free list and pointer to the successor.
  */
  
 #include <stdio.h>
@@ -77,7 +78,6 @@ static void *coalesce(void *ptr);
 static void *place(void *ptr, size_t asize);
 static void insert_node(void *ptr, size_t size);
 static void delete_node(void *ptr);
-int mm_check(void);
 
 /* Global variables*/
 void *segregated_free_lists[25]; 
@@ -125,28 +125,32 @@ void handle_double_free(void) {
  */
 int mm_init(range_t **ranges)
 {
-  char *heap_listp;
-  int i;
-  
-  /* Initialize array of pointers to segregated free lists */
-  for (i = 0; i < 25; i++) {
-    segregated_free_lists[i] = NULL;
-  }
-
-  /* Create the initial empty heap */
-  if ((long)(heap_listp = mem_sbrk(4*WSIZE)) == -1) return -1;
-
-  PUT(heap_listp, 0); 			                   	 /* alignment padding */
-  PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); 	/* prologue header */
-  PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1));	/* prologue footer */
-  PUT(heap_listp + (3*WSIZE), PACK(0, 1)); 	    /* epliogue header */
-
-  /* Extend the empty heap with a free block of CHUNKSIZE bytes */
-  if(extend_heap(INITCHUNKSIZE) == NULL) return -1;
-
+    int i;         
+    char *heap_listp; // Pointer to beginning of heap
+    
+    // Initialize segregated free is
+    for (i = 0; i < ILIMIT; i++) {
+        segregated_free_is[i] = NULL;
+    }
+    
+    // Allocate memory for the initial empty heap 
+    if ((long)(heap_listp = mem_sbrk(4 * WSIZE)) == -1)
+        return -1;
+    
+    PUT_NOTAG(heap_listp, 0);                            /* Alignment padding */
+    PUT_NOTAG(heap_listp + (1 * WSIZE), PACK(DSIZE, 1)); /* Prologue header */
+    PUT_NOTAG(heap_listp + (2 * WSIZE), PACK(DSIZE, 1)); /* Prologue footer */
+    PUT_NOTAG(heap_listp + (3 * WSIZE), PACK(0, 1));     /* Epilogue header */
+    
+    if (extend_heap(INITCHUNKSIZE) == NULL)
+        return -1;
+    
+    /* DON't MODIFY THIS STAGE AND LEAVE IT AS IT WAS */
   gl_ranges = ranges;
-  return 0;
+
+    return 0;
 }
+
 
 
 /*
@@ -157,7 +161,7 @@ void* mm_malloc(size_t size)
 {
   size_t asize;       /* Adjusted block size */
   size_t extendsize;  /* Extend heap with this size if no fit free block */
-  void *ptr= NULL;
+  void *ptr=NULL;
 
   /* Ignore spurious requests */
   if (size == 0)
@@ -170,7 +174,7 @@ void* mm_malloc(size_t size)
     asize = ALIGN(size + DSIZE);
   
   /* Search throught the segregated_free_list for the free block*/
-  int i;
+  int i =0;
   size_t ssize=asize;
   while (i < 25) {
       if ((i == 24) || ((ssize <= 1) && (segregated_free_lists[i] != NULL))) {
@@ -236,9 +240,18 @@ void* mm_realloc(void *ptr, size_t t)
 
 /*
  * mm_exit - finalize the malloc package.
+ * Free all the allocated blocks.
  */
 void mm_exit(void)
 {
+ /*
+  char *ptr=heap_listp;
+  
+  while(ptr!=NULL){
+   free(ptr);
+   ptr=NEXT(ptr);
+  }
+  */
   return;
 }
 
@@ -250,10 +263,10 @@ void mm_exit(void)
  */
 static void *extend_heap(size_t words) 
 {
-    void *ptr;
+    char *ptr;
     size_t asize;
     
-    asize = ALIGN(asize);
+    asize = ALIGN(words);
     
     if ((long)(ptr = mem_sbrk(asize)) == -1) 
         return NULL;
@@ -356,7 +369,7 @@ static void insert_node(void *ptr, size_t size) {
     void *search_ptr = ptr;
     void *insert_ptr = NULL;
     
-    // Select segregated list 
+    /* Select segregated list */ 
     while ((i < 24) && (size > 1)) {
         size >>= 1;
         i++;
@@ -424,4 +437,4 @@ static void delete_node(void *ptr) {
         }
     }
     return;
-  }
+}
