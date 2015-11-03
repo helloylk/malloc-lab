@@ -285,38 +285,35 @@ static void *extend_heap(size_t size)
  */
 static void *place(void *ptr, size_t asize)
 {
-    size_t ptr_size = GET_SIZE(HDRP(ptr));
-    size_t remainder = ptr_size - asize;
-    
-    delete_node(ptr);
-    
-    
-    if (remainder <= DSIZE * 2) {
-        // Do not split block 
-        PUT(HDRP(ptr), PACK(ptr_size, 1)); 
-        PUT(FTRP(ptr), PACK(ptr_size, 1)); 
-    }
-    
-    else if (asize >= 100) {
-        // Split block
-        PUT(HDRP(ptr), PACK(remainder, 0));
-        PUT(FTRP(ptr), PACK(remainder, 0));
-        PUT(HDRP(NEXT(ptr)), PACK(asize, 1));
-        PUT(FTRP(NEXT(ptr)), PACK(asize, 1));
-        insert_node(ptr, remainder);
-        return NEXT(ptr);
-        
-    }
-    
-    else {
-        // Split block
-        PUT(HDRP(ptr), PACK(asize, 1)); 
-        PUT(FTRP(ptr), PACK(asize, 1)); 
-        PUT(HDRP(NEXT(ptr)), PACK(remainder, 0)); 
-        PUT(FTRP(NEXT(ptr)), PACK(remainder, 0)); 
-        insert_node(NEXT(ptr), remainder);
-    }
-    return ptr;
+  size_t csize = GET_SIZE(HDRP(ptr));
+  
+  delete_node(ptr);
+   
+  if(asize >= 100) {
+    // Split block
+    PUT(HDRP(ptr), PACK(csize-asize, 0));
+    PUT(FTRP(ptr), PACK(csize-asize, 0));
+    PUT(HDRP(NEXT(ptr)), PACK(asize, 1));
+    PUT(FTRP(NEXT(ptr)), PACK(asize, 1));
+    insert_node(ptr, csize-asize);
+    return NEXT(ptr);
+  }
+  
+  else if((csize-asize) >= 2 * DSIZE) {
+    PUT(HDRP(ptr), PACK(asize,1));
+    PUT(FTRP(ptr), PACK(asize,1));
+    ptr = NEXT(ptr);
+    PUT(HDRP(ptr), PACK(csize-asize,0));
+    PUT(FTRP(ptr), PACK(csize-asize,0));
+    insert_node(ptr, csize-asize);
+  }
+  
+  else{
+      PUT(HDRP(ptr), PACK(csize, 1));
+      PUT(FTRP(ptr), PACK(csize, 1));
+  }
+  
+  return ptr;
 }
 
 
