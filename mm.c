@@ -38,6 +38,7 @@ student_t student = {
 
 #define GET(p)       (*(unsigned int *)(p)) //read word at address p
 #define PUT(p, val)  (*(unsigned int *)(p) = (val)) //write word at address p
+#define PUT_PTR(p, ptr) (*(unsigned int *)(p) = (unsigned int)(ptr)) // write predecessor or successor pointer  
 
 #define GET_SIZE(p)  (GET(p) & ~0x7) //extracts size from 4 byte header/footer
 #define GET_ALLOC(p) (GET(p) & 0x1) //extracts allocated byte from 4 byte header/footer
@@ -312,6 +313,8 @@ static void *place(void *ptr, size_t asize)
     ptr = NEXT(ptr);
     PUT(HDRP(ptr), PACK(csize-asize,0));
     PUT(FTRP(ptr), PACK(csize-asize,0));
+    insert_node(ptr,csize-asize);
+    //note: original devided into 3, i did 2 here
   }
   else{
       PUT(HDRP(ptr), PACK(csize, 1));
@@ -337,50 +340,108 @@ static void *coalesce(void *ptr)
 
     else if (prev_alloc && !next_alloc) {      /* Case 2: Only the previous is allocated*/
         size += GET_SIZE(HDRP(NEXT(ptr)));
+        delete_node(ptr);
+        delete_node(NEXT(ptr));
         PUT(HDRP(ptr), PACK(size,0));
         PUT(FTRP(ptr), PACK(size,0));
+        insert_node(ptr, size);
         return ptr;
     }
 
     else if (!prev_alloc && next_alloc) {      /* Case 3: Only the next is allocated */
         size += GET_SIZE(HDRP(PREV(ptr)));
+        delete_node(ptr);
+        delete_node(PREV(ptr));
         PUT(FTRP(ptr), PACK(size, 0));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
+        insert_node(ptr, size);
         return (PREV(ptr));
     }
 
     else {                                     /* Case 4: Neither are allocated */
-        size += GET_SIZE(HDRP(PREV(ptr))) + 
-            GET_SIZE(FTRP(NEXT(ptr)));
+        size += GET_SIZE(HDRP(PREV(ptr))) + GET_SIZE(FTRP(NEXT(ptr)));
+        delete_node(ptr);
+        delete_node(PREV_BLKP(ptr));
+        delete_node(NEXT_BLKP(ptr));
         PUT(HDRP(PREV(ptr)), PACK(size, 0));
         PUT(FTRP(NEXT(ptr)), PACK(size, 0));
+        insert_node(ptr, size);
         return (PREV(ptr));
     }
 }
 
-/*
-#define PREV_FP(bp)	(*(void **)(bp))
-#define NEXT_FP(bp)	(*(void **)(bp+DSIZE))
 
-static void remove(void *ptr)
-{
-  if(PREV_FP(bp)) NEXT_FP(PREV_FP(ptr)) =NEXT_FP(ptr);
-  PREV_FP(NEXT_FP(ptr)) = PREV_FP(ptr);
-}
-*/
-
-/* 
- * find_fit - Find a fit for a block with asize bytes 
- */
-static void *find_fit(size_t asize)
-{
-    void *ptr;
-
-    /* first fit search */
-    for (ptr = heap_listp; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT(ptr)) {
-        if (!GET_ALLOC(HDRP(ptr)) && (asize <= GET_SIZE(HDRP(ptr)))) {
-            return ptr;
+static void insert_node(void *ptr, size_t size) {
+    int i = 0;
+    void *search_ptr = ptr;
+    void *insert_ptr = NULL;
+    
+    // Select segregated list 
+    while ((i < 24) && (size > 1)) {
+        size >>= 1;
+        i++;
+    }
+    
+    // Keep size ascending order and search
+    search_ptr = segregated_free_lists[i];
+    while ((search_ptr != NULL) && (size > GET_SIZE(HDRP(search_ptr)))) {
+        insert_ptr = search_ptr;
+        search_ptr = PRED_LIST(search_ptr);
+    }
+    
+    // Set predecessor and successor 
+    if (search_ptr != NULL) {
+        if (insert_ptr != NULL) {
+            PUT_PTR(PRED_ENT(ptr), search_ptr);
+            PUT_PTR(SUCC_ENT(search_ptr), ptr);
+            PUT_PTR(SUCC_ENT(ptr), insert_ptr);
+            PUT_PTR(PRED_ENT(insert_ptr), ptr);
+        } else {
+            PUT_PTR(PRED_ENT(ptr), search_ptr);
+            PUT_PTR(SUCC_ENT(search_ptr), ptr);
+            PUT_PTR(SUCC_ENT(ptr), NULL);
+            segregated_free_lists[i] = ptr;
+        }
+    } else {
+        if (insert_ptr != NULL) {
+            PUT_PTR(PRED_ENT(ptr), NULL);
+            PUT_PTR(SUCC_ENT(ptr), insert_ptr);
+            PUT_PTR(PRED_ENT(insert_ptr), ptr);
+        } else {
+            PUT_PTR(PRED_ENT(ptr), NULL);
+            PUT_PTR(SUCC_ENT(ptr), NULL);
+            segregated_free_lists[i] = ptr;
         }
     }
-    return NULL; /* no fit */
+    
+    return;
+}
+
+
+static void delete_node(void *ptr) {
+    int i = 0;
+    size_t size = GET_SIZE(HDRP(ptr));
+    
+    // Select segregated list 
+    while ((i < 24 ) && (size > 1)) {
+        size >>= 1;
+        list++;
+    }
+    
+    if (PRED_LIST(ptr) != NULL) {
+        if (SUCC_LIST(ptr) != NULL) {
+            PUT_PTR(SUCC_ENT(PRED(ptr)), SUCC_LIST(ptr));
+            PUT_PTR(PRED_ENT(SUCC(ptr)), PRED_LIST(ptr));
+        } else {
+            PUT_PTR(SUCC_ENT(PRED(ptr)), NULL);
+            segregated_free_lists[i] = PRED_LIST(ptr);
+        }
+    } else {
+        if (SUCC_LIST(ptr) != NULL) {
+            PUT_PTR(PRED_ENT(SUCC_LIST(ptr)), NULL);
+        } else {
+            segregated_free_lists[i] = NULL;
+        }
+    }
+    return;
 }
