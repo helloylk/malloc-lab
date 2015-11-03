@@ -125,32 +125,28 @@ void handle_double_free(void) {
  */
 int mm_init(range_t **ranges)
 {
-    int i;         
-    char *heap_listp; // Pointer to beginning of heap
-    
-    // Initialize segregated free is
-    for (i = 0; i < ILIMIT; i++) {
-        segregated_free_is[i] = NULL;
-    }
-    
-    // Allocate memory for the initial empty heap 
-    if ((long)(heap_listp = mem_sbrk(4 * WSIZE)) == -1)
-        return -1;
-    
-    PUT_NOTAG(heap_listp, 0);                            /* Alignment padding */
-    PUT_NOTAG(heap_listp + (1 * WSIZE), PACK(DSIZE, 1)); /* Prologue header */
-    PUT_NOTAG(heap_listp + (2 * WSIZE), PACK(DSIZE, 1)); /* Prologue footer */
-    PUT_NOTAG(heap_listp + (3 * WSIZE), PACK(0, 1));     /* Epilogue header */
-    
-    if (extend_heap(INITCHUNKSIZE) == NULL)
-        return -1;
-    
-    /* DON't MODIFY THIS STAGE AND LEAVE IT AS IT WAS */
+  int i;
+  char *heap_listp;
+  
+  /* Initialize array of pointers to segregated free lists */
+  for (i = 0; i < 25; i++) {
+    segregated_free_lists[i] = NULL;
+  }
+
+  /* Create the initial empty heap */
+  if ((long)(heap_listp = mem_sbrk(4*WSIZE)) == -1) return -1;
+
+  PUT(heap_listp, 0); 			                   	 /* alignment padding */
+  PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); 	/* prologue header */
+  PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1));	/* prologue footer */
+  PUT(heap_listp + (3*WSIZE), PACK(0, 1)); 	    /* epliogue header */
+
+  /* Extend the empty heap with a free block of CHUNKSIZE bytes */
+  if(extend_heap(INITCHUNKSIZE) == NULL) return -1;
+
   gl_ranges = ranges;
-
-    return 0;
+  return 0;
 }
-
 
 
 /*
@@ -268,7 +264,7 @@ static void *extend_heap(size_t words)
     
     asize = ALIGN(words);
     
-    if ((long)(ptr = mem_sbrk(asize)) == -1) 
+    if ((ptr = mem_sbrk(asize)) == (void *)-1) 
         return NULL;
 
     /* Initialize free block header/footer and the epilogue header */
@@ -286,36 +282,40 @@ static void *extend_heap(size_t words)
  */
 static void *place(void *ptr, size_t asize)
 {
-  size_t csize = GET_SIZE(HDRP(ptr));
-  
-  delete_node(ptr);
-   
-  if(asize >= 100) {
-    // Split block
-    PUT(HDRP(ptr), PACK(csize-asize, 0));
-    PUT(FTRP(ptr), PACK(csize-asize, 0));
-    PUT(HDRP(NEXT(ptr)), PACK(asize, 1));
-    PUT(FTRP(NEXT(ptr)), PACK(asize, 1));
-    insert_node(ptr, csize-asize);
-    return NEXT(ptr);
-  }
-  
-  else if((csize-asize) >= 2 * DSIZE) {
-    PUT(HDRP(ptr), PACK(asize,1));
-    PUT(FTRP(ptr), PACK(asize,1));
-    ptr = NEXT(ptr);
-    PUT(HDRP(ptr), PACK(csize-asize,0));
-    PUT(FTRP(ptr), PACK(csize-asize,0));
-    insert_node(ptr, csize-asize);
-  }
-  
-  else{
-      PUT(HDRP(ptr), PACK(csize, 1));
-      PUT(FTRP(ptr), PACK(csize, 1));
-  }
-  
-  return ptr;
+    size_t ptr_size = GET_SIZE(HDRP(ptr));
+    size_t remainder = ptr_size - asize;
+    
+    delete_node(ptr);
+    
+    
+    if (remainder <= DSIZE * 2) {
+        // Do not split block 
+        PUT(HDRP(ptr), PACK(ptr_size, 1)); 
+        PUT(FTRP(ptr), PACK(ptr_size, 1)); 
+    }
+    
+    else if (asize >= 100) {
+        // Split block
+        PUT(HDRP(ptr), PACK(remainder, 0));
+        PUT(FTRP(ptr), PACK(remainder, 0));
+        PUT(HDRP(NEXT(ptr)), PACK(asize, 1));
+        PUT(FTRP(NEXT(ptr)), PACK(asize, 1));
+        insert_node(ptr, remainder);
+        return NEXT(ptr);
+        
+    }
+    
+    else {
+        // Split block
+        PUT(HDRP(ptr), PACK(asize, 1)); 
+        PUT(FTRP(ptr), PACK(asize, 1)); 
+        PUT(HDRP(NEXT(ptr)), PACK(remainder, 0)); 
+        PUT(FTRP(NEXT(ptr)), PACK(remainder, 0)); 
+        insert_node(NEXT(ptr), remainder);
+    }
+    return ptr;
 }
+
 
 
 /*
