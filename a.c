@@ -283,17 +283,17 @@ static void *place(void *ptr, size_t asize)
   
   delete_node(ptr);
    
-  if (remainder >= MINSIZE) {
+  if ((csize-asize) >= 2* DSIZE) {
     /* Split block */
-    PUT(HEAD(ptr), PACK(asize, 1)); /* Block header */
-    PUT(FOOT(ptr), PACK(asize, 1)); /* Block footer */
-    PUT_NOTAG(HEAD(NEXT(ptr)), PACK(remainder, 0)); /* Next header */
-    PUT_NOTAG(FOOT(NEXT(ptr)), PACK(remainder, 0)); /* Next footer */  
-    insert_node(NEXT(ptr), remainder);
+    PUT(HDRP(ptr), PACK(asize, 1)); /* Block header */
+    PUT(FTRP(ptr), PACK(asize, 1)); /* Block footer */
+    PUT(HDRP(NEXT(ptr)), PACK(csize-asize, 0)); /* Next header */
+    PUT(FTRP(NEXT(ptr)), PACK(csize-asize, 0)); /* Next footer */  
+    insert_node(NEXT(ptr), csize-asize);
   } else {
     /* Do not split block */
-    PUT(HEAD(ptr), PACK(ptr_size, 1)); /* Block header */
-    PUT(FOOT(ptr), PACK(ptr_size, 1)); /* Block footer */
+    PUT(HDRP(ptr), PACK(csize, 1)); /* Block header */
+    PUT(FTRP(ptr), PACK(csize, 1)); /* Block footer */
   }}
   
   return ptr;
