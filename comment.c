@@ -393,7 +393,7 @@ static void insert_node(void *ptr, size_t size) {
             segregated_free_lists[i] = ptr;
         }
     } else {
-        if (insert_ptr != NULL) {
+        if (insert != NULL) {
             PUT_PTR(PRED_ENT(ptr), NULL);
             PUT_PTR(SUCC_ENT(ptr), insert);
             PUT_PTR(PRED_ENT(insert), ptr);
