@@ -166,7 +166,7 @@ void *mm_malloc(size_t size)
     if (size <= DSIZE)
      asize = 2 * DSIZE;
     else
-     asize = ALIGN(size + DSIZE)
+     asize = ALIGN(size + DSIZE);
     
     /* Search throught the segregated_free_list for the free block*/
     int i = 0; 
@@ -294,7 +294,7 @@ static void *place(void *ptr, size_t asize)
     /* Do not split block */
     PUT(HDRP(ptr), PACK(csize, 1)); /* Block header */
     PUT(FTRP(ptr), PACK(csize, 1)); /* Block footer */
-  }}
+  }
   
   return ptr;
 }
