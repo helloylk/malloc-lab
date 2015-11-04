@@ -148,44 +148,42 @@ int mm_init(range_t **ranges)
   return 0;
 }
 
-
+/*
+ * mm_malloc - Allocate a block by incrementing the brk pointer.
+ *     Always allocate a block whose size is a multiple of the alignment.
+ */
 void *mm_malloc(size_t size)
 {
     size_t asize;      /* Adjusted block size */
-    size_t extendsize; /* Amount to extend heap if no fit */
-    void *ptr = NULL;  /* Pointer */
+    size_t extendsize; /* Extend heap with this size if no fit free block */
+    void *ptr = NULL; 
     
-    // Ignore size 0 cases
+    /* Ignore spurious requests */
     if (size == 0)
         return NULL;
     
-    // Align block size
-    if (size <= DSIZE) {
-        asize = 2 * DSIZE;
-    } else {
-        asize = ALIGN(size+DSIZE);
-    }
+    /* Adjust block size to align */
+    if (size <= DSIZE)
+     asize = 2 * DSIZE;
+    else
+     asize = ALIGN(size + DSIZE)
     
-    int list = 0; 
-    size_t searchsize = asize;
-    // Search for free block in segregated list
-    while (list < 25) {
-        if ((list == 25 - 1) || ((searchsize <= 1) && (segregated_free_lists[list] != NULL))) {
-            ptr = segregated_free_lists[list];
-            // Ignore blocks that are too small or marked with the reallocation bit
+    /* Search throught the segregated_free_list for the free block*/
+    int i = 0; 
+    size_t ssize = asize;
+    while (i < 25) {
+        if ((i == 24) || ((ssize <= 1) && (segregated_free_lists[i] != NULL))) {
+            ptr = segregated_free_lists[i];
             while ((ptr != NULL) && (asize > GET_SIZE(HDRP(ptr))))
-            {
                 ptr = PRED_LIST(ptr);
-            }
             if (ptr != NULL)
                 break;
         }
-        
-        searchsize >>= 1;
-        list++;
+        ssize >>= 1;
+        i++;
     }
     
-    // if free block is not found, extend the heap
+    /* No fit found. Get more memory by extending */
     if (ptr == NULL) {
         extendsize = MAX(asize, CHUNKSIZE);
         
@@ -193,11 +191,7 @@ void *mm_malloc(size_t size)
             return NULL;
     }
     
-    // Place and divide block
-    ptr = place(ptr, asize);
-    
-    
-    // Return pointer to newly allocated block 
+    place(ptr, asize);
     return ptr;
 }
 
