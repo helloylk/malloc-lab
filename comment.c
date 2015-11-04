@@ -272,7 +272,7 @@ static void *extend_heap(size_t size)
     /* Insert new free block to the segregated free list by adjusting size */
     insert_node(ptr, asize);
     
-    coalesce(ptr);
+    ptr = coalesce(ptr);
     return ptr;
 }
 
