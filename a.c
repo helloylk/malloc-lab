@@ -287,9 +287,10 @@ static void *place(void *ptr, size_t asize)
     /* Split block */
     PUT(HDRP(ptr), PACK(asize, 1)); /* Block header */
     PUT(FTRP(ptr), PACK(asize, 1)); /* Block footer */
-    PUT(HDRP(NEXT(ptr)), PACK(csize-asize, 0)); /* Next header */
-    PUT(FTRP(NEXT(ptr)), PACK(csize-asize, 0)); /* Next footer */  
-    insert_node(NEXT(ptr), csize-asize);
+    ptr=NEXT(ptr);
+    PUT(HDRP(ptr), PACK(csize-asize, 0)); /* Next header */
+    PUT(FTRP(ptr), PACK(csize-asize, 0)); /* Next footer */  
+    insert_node(ptr, csize-asize);
   } else {
     /* Do not split block */
     PUT(HDRP(ptr), PACK(csize, 1)); /* Block header */
