@@ -244,12 +244,13 @@ void mm_exit(void)
 
     size_t* curr_block = start_heap;
 
-    for(ptr = start_heap; GET_SIZE(HEADER(ptr)) > 0; ptr = NEXT(ptr)) {
+    for(ptr = start_heap; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT(ptr)) {
         free(ptr);
         if (ptr > end_heap || ptr < start_heap)
             printf("Error: pointer %p out of heap bounds\n", ptr);
         if (GET_ALLOC(ptr) == 0 && GET_ALLOC(NEXT(ptr))==0)
             printf("ERROR: contiguous free blocks %p and %p not coalesced\n", ptr, NEXT(ptr));
+}
 }
 
 
