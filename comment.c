@@ -306,7 +306,6 @@ static void *place(void *ptr, size_t asize)
 }
 
 
-
 /*
  * coalesce - boundary tag coalescing in 4 cases (from the CSAPP textbook)
  *    Insert newly-sized free block when coalscing occurs
